@@ -16,6 +16,11 @@ def is_big_city(city):
     rank = city["properties"]["rank"]
     return rank in ["0", "I", "II", "III"]
 
+def city_county_filter(county):
+    if county is None:
+        return lambda x: True
+    return (lambda city: city["properties"]["countyMn"] == county)
+
 class GraphHopper:
     def __init__(self):
         self.graphhopper_proc = subprocess.Popen(["./graphhopper.sh"], stdin=None, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, shell=False, preexec_fn=os.setsid)
@@ -51,32 +56,38 @@ class GraphHopper:
             distance = sorted(result["paths"], key=lambda x: x["distance"])[0]["distance"] / 1000
             return distance
 
-with GraphHopper() as graph:
-    with open(os.getenv("DISTANTE_INPUT") or "ro_localitati_punct.geojson", "r") as file:
-        data = json.load(file)
+def compute_distances(city_filter, big_city_filter, compute="time", output_path="timpi.csv"):
+    with GraphHopper() as graph:
+        with open("ro_localitati_punct.geojson", "r") as file:
+            data = json.load(file)
 
-    cities = data["features"]
-    # TODO: filtrare orașe
-    cities = cities[0:10]
+        cities = data["features"]
+        cities = [city for city in cities if city_filter(city)]
 
-    distances = np.zeros((len(cities), len(cities)))
+        distances = np.zeros((len(cities), len(cities)))
 
-    for i in range(1, len(cities)):
-        # TODO: alege numai anumite orașe
-        print("%d/%d" % (i, len(cities)))
-        for j in range(i):
-            dist = graph.compute_distance(cities[i]["geometry"]["coordinates"], cities[j]["geometry"]["coordinates"])
+        for i in range(1, len(cities)):
+            print("%d/%d" % (i, len(cities)))
+            for j in range(i):
+                if not big_city_filter(cities[i]) and not big_city_filter(cities[j]):
+                    continue
+                dist = graph.compute_distance(cities[i]["geometry"]["coordinates"], cities[j]["geometry"]["coordinates"], compute)
 
-            if dist == -1:
-                print("Drum izolat %s - %s" % (city_name(cities[i]), city_name(cities[j])))
+                if dist == -1:
+                    print("Drum izolat %s - %s" % (city_name(cities[i]), city_name(cities[j])))
 
-            distances[i][j] = dist
-            distances[j][i] = dist
+                distances[i][j] = dist
+                distances[j][i] = dist
 
-    print("%d/%d - Calcul finalizat" % (len(cities), len(cities)))
+        print("%d/%d - Calcul finalizat" % (len(cities), len(cities)))
 
-    with open(os.getenv("DISTANTE_OUTPUT") or "distante.csv", "w") as csv_file:
-        csv_writer = csv.writer(csv_file)
-        csv_writer.writerow([""] + [city_name(city) for city in cities])
-        for i in range(len(cities)):
-            csv_writer.writerow([city_name(cities[i])] + ["%.1f" % d for d in distances[i]])
+        with open(output_path, "w") as csv_file:
+            csv_writer = csv.writer(csv_file)
+            csv_writer.writerow([""] + [city_name(city) for city in cities])
+            for i in range(len(cities)):
+                csv_writer.writerow([city_name(cities[i])] + ["%.1f" % d for d in distances[i]])
+
+if __name__ == "__main__":
+    city_filter = city_county_filter(os.getenv("DISTANTE_JUDET"))
+    big_city_filter = is_big_city if os.getenv("DISTANTE_ORASE") else (lambda x: True)
+    compute_distances(city_filter, big_city_filter, os.getenv("DISTANTE_TIP") or "time", os.getenv("DISTANTE_OUTPUT") or "timpi.csv")
