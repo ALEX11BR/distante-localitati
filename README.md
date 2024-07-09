@@ -23,3 +23,11 @@ python3 -c 'from calcul_distante import compute_distances; compute_distances((la
 `./graphhopper.sh init`: descarcă fișierele cu localități și drumuri OpenStreetMap dacă nu sunt prezente și inițializează cacheul de date de drumuri
 
 `./graphhopper.sh reset`: șterge fișierele cu localități și drumuri OpenStreetMap preexistente înainte de rularea `./graphhopper.sh init`.
+
+## Dependențe:
+- `docker`
+- `curl`
+- `sh`
+- `python3`
+- `python3-numpy`
+- `python3-requests`
