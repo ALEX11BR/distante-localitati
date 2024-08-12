@@ -5,6 +5,7 @@ if [ "$1" = "init" ] || [ "$1" = "reset" ]; then
         rm -r ./graphhopper_data/*
         rm ./ro_localitati_punct.geojson
     fi
+    mkdir graphhopper_data
 
     [ -f ./graphhopper_data/romania-latest.osm.pbf ] || curl "https://download.geofabrik.de/europe/romania-latest.osm.pbf" -o ./graphhopper_data/romania-latest.osm.pbf
     [ -f ./ro_localitati_punct.geojson ] || curl "https://geo-spatial.org/vechi/file_download/29543" -o ./ro_localitati_punct.geojson
